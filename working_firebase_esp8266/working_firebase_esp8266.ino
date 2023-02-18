@@ -46,7 +46,21 @@ unsigned long receiveDataPrevMillis = 10000;
 int count = 0;
 bool signupOK = false;
 
+// TEMPERATURE BELOW
+#include "DHT.h"
+#define DHTTYPE DHT11
+uint8_t DHTPin = D8; 
+
+DHT dht(DHTPin, DHTTYPE);  
+float temperature;
+float humidity;
+
 void setup(){
+  // Temperature
+  pinMode(DHTPin, INPUT);
+  dht.begin(); 
+
+  //Firebase
   Serial.begin(115200);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
@@ -95,24 +109,28 @@ void loop(){
     count++;
     
     // Write a Float number on the database path test/float
-    float randomNumber = 0.01 + random(0,100);
-    if (Firebase.RTDB.setFloat(&fbdo, "test/float", randomNumber)){
-      Serial.println("Stored a random number at path:" + fbdo.dataPath());
-    }
-    else {
-      Serial.println("FAILED");
-      Serial.println("Failed to pass data, error message: " + fbdo.errorReason());
-    }
-
-    delay(1000);
-    if (Firebase.RTDB.getFloat(&fbdo, "/test/float")) {
-      if (fbdo.dataType() == "float") {
-        float floatValue = fbdo.floatData();
-        Serial.println("By reading from the database, found out the random number stored was: " + String(floatValue));
+    // float randomNumber = 0.01 + random(0,100);
+    // Or write temperature
+    temperature = dht.readTemperature(); // Gets the values of the temperature
+    if (!isnan(temperature)) {
+      if (Firebase.RTDB.setFloat(&fbdo, "test/float", temperature)){
+        Serial.println("Stored a random number at path:" + fbdo.dataPath());
       }
-    }
-    else {
-       Serial.println("Failed to pass data, error message: " + fbdo.errorReason());
+      else {
+        Serial.println("Failed to pass data, error message: " + fbdo.errorReason());
+      }
+      
+
+      delay(1000);
+      if (Firebase.RTDB.getFloat(&fbdo, "/test/float")) {
+        if (fbdo.dataType() == "float") {
+          float floatValue = fbdo.floatData();
+          Serial.println("By reading from the database, found out the temperature stored was: " + String(floatValue));
+        }
+      }
+      else {
+        Serial.println("Failed to pass data, error message: " + fbdo.errorReason());
+      }
     }
   }
 }
